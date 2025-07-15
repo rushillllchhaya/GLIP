@@ -16,6 +16,7 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark import layers as L
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from maskrcnn_benchmark.utils import cv2_util
+from maskrcnn_benchmark.utils.traffic_stats import get_global_tracker
 
 engine = inflect.engine()
 nltk.download('punkt')
@@ -31,7 +32,8 @@ class GLIPDemo(object):
                  min_image_size=None,
                  show_mask_heatmaps=False,
                  masks_per_dim=5,
-                 load_model=True
+                 load_model=True,
+                 enable_traffic_stats=True
                  ):
         self.cfg = cfg.clone()
         if load_model:
@@ -42,6 +44,11 @@ class GLIPDemo(object):
         self.min_image_size = min_image_size
         self.show_mask_heatmaps = show_mask_heatmaps
         self.masks_per_dim = masks_per_dim
+        
+        # Initialize traffic statistics tracking
+        self.enable_traffic_stats = enable_traffic_stats
+        if self.enable_traffic_stats:
+            self.traffic_tracker = get_global_tracker()
 
         save_dir = cfg.OUTPUT_DIR
         if load_model:
@@ -127,9 +134,25 @@ class GLIPDemo(object):
         return tokens_positive
 
     def inference(self, original_image, original_caption):
-        predictions = self.compute_prediction(original_image, original_caption)
-        top_predictions = self._post_process_fixed_thresh(predictions)
-        return top_predictions
+        # Track inference start
+        context = None
+        if self.enable_traffic_stats:
+            context = self.traffic_tracker.record_inference_start(batch_size=1)
+        
+        try:
+            predictions = self.compute_prediction(original_image, original_caption)
+            top_predictions = self._post_process_fixed_thresh(predictions)
+            
+            # Track successful inference
+            if self.enable_traffic_stats:
+                self.traffic_tracker.record_inference_end(context, success=True)
+            
+            return top_predictions
+        except Exception as e:
+            # Track failed inference
+            if self.enable_traffic_stats:
+                self.traffic_tracker.record_inference_end(context, success=False, error_type=type(e).__name__)
+            raise
 
     def run_on_web_image(self, 
             original_image, 
@@ -137,17 +160,34 @@ class GLIPDemo(object):
             thresh=0.5,
             custom_entity = None,
             alpha = 0.0):
-        predictions = self.compute_prediction(original_image, original_caption, custom_entity)
-        top_predictions = self._post_process(predictions, thresh)
+        # Track inference start
+        context = None
+        if self.enable_traffic_stats:
+            context = self.traffic_tracker.record_inference_start(batch_size=1)
+        
+        try:
+            predictions = self.compute_prediction(original_image, original_caption, custom_entity)
+            top_predictions = self._post_process(predictions, thresh)
 
-        result = original_image.copy()
-        if self.show_mask_heatmaps:
-            return self.create_mask_montage(result, top_predictions)
-        result = self.overlay_boxes(result, top_predictions)
-        result = self.overlay_entity_names(result, top_predictions)
-        if self.cfg.MODEL.MASK_ON:
-            result = self.overlay_mask(result, top_predictions)
-        return result, top_predictions
+            result = original_image.copy()
+            if self.show_mask_heatmaps:
+                result = self.create_mask_montage(result, top_predictions)
+            else:
+                result = self.overlay_boxes(result, top_predictions)
+                result = self.overlay_entity_names(result, top_predictions)
+                if self.cfg.MODEL.MASK_ON:
+                    result = self.overlay_mask(result, top_predictions)
+            
+            # Track successful inference
+            if self.enable_traffic_stats:
+                self.traffic_tracker.record_inference_end(context, success=True)
+            
+            return result, top_predictions
+        except Exception as e:
+            # Track failed inference
+            if self.enable_traffic_stats:
+                self.traffic_tracker.record_inference_end(context, success=False, error_type=type(e).__name__)
+            raise
 
     def visualize_with_predictions(self, 
             original_image, 

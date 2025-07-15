@@ -1,0 +1,25 @@
+{
+  "overview": {
+    "total_requests": 20,
+    "successful_requests": 17,
+    "failed_requests": 3,
+    "success_rate_percent": 85.0,
+    "uptime_seconds": 2.54,
+    "requests_per_second": 7.8798
+  },
+  "performance": {
+    "avg_inference_time_seconds": 0.1535,
+    "throughput_items_per_second": 8.27,
+    "avg_batch_size": 2.1,
+    "avg_memory_usage_mb": 422.88
+  },
+  "recent_activity": {
+    "requests_last_hour": 10,
+    "recent_requests_count": 10
+  },
+  "errors": {
+    "TimeoutError": 1,
+    "CudaError": 1
+  },
+  "timestamp": "2025-07-15T06:53:16.259623"
+}
