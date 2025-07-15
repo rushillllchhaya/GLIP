@@ -49,6 +49,7 @@ We provide code for:
 3. **fine-tuning** GLIP on standard benchmarks (COCO) and custom COCO-formated datasets;
 4. **a Colab demo**.
 5. Toolkits for **the Object Detection in the Wild Benchmark (ODinW)** with 35 downstream detection tasks.
+6. **Traffic statistics monitoring** for model usage analysis and performance tracking.
 
 Please see respective sections for instructions.
 
@@ -368,6 +369,65 @@ Please see one provided example for zero shot prediction file: [all_predictions_
 ```
 Please see one provided example for few shot prediction file: [all_predictions_3_shot.json](https://drive.google.com/file/d/13pDjmSf0ZAZghgiDTONDF0ur5FP8AuLx/view?usp=sharing).
 
+
+
+## Traffic Statistics
+
+GLIP now includes comprehensive traffic statistics monitoring to track model usage, performance metrics, and operational insights.
+
+### Features
+- **Automatic tracking** of inference requests, timing, and success rates
+- **Performance metrics** including latency, throughput, and resource usage
+- **Error monitoring** with detailed error type tracking
+- **Historical data** with hourly breakdowns and trends
+- **Multiple output formats** (table, JSON, summary)
+
+### Quick Start
+
+View current statistics:
+```
+python tools/traffic_stats.py
+```
+
+Run a demo simulation:
+```
+python tools/demo_traffic_stats.py
+```
+
+### Programmatic Usage
+
+```python
+from maskrcnn_benchmark.engine.predictor_glip import GLIPDemo
+from maskrcnn_benchmark.utils.traffic_stats import get_global_tracker
+
+# Traffic stats are automatically enabled
+demo = GLIPDemo(cfg)
+result = demo.inference(image, caption)
+
+# View statistics
+tracker = get_global_tracker()
+stats = tracker.get_stats_summary()
+print(f"Total requests: {stats['overview']['total_requests']}")
+```
+
+### CLI Options
+
+```bash
+# Different output formats
+python tools/traffic_stats.py --format summary
+python tools/traffic_stats.py --format json
+
+# Hourly breakdown
+python tools/traffic_stats.py --hourly 24
+
+# Watch mode (auto-refresh)
+python tools/traffic_stats.py --watch 5
+
+# Reset statistics
+python tools/traffic_stats.py --reset
+```
+
+For detailed documentation, see [docs/TRAFFIC_STATS.md](docs/TRAFFIC_STATS.md).
 
 
 ## Citations
